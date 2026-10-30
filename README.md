@@ -65,8 +65,20 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 - ReDoc: http://127.0.0.1:8000/redoc
 - Saúde: http://127.0.0.1:8000/health
 
+## Banco de dados
+
+O banco SQLite é criado automaticamente em `data/ecomonitor.db` na
+inicialização da API. A Etapa 2 adiciona as tabelas:
+
+- `users`: usuários do sistema.
+- `ocorrencias`: registros ambientais vinculados ao usuário responsável.
+
+Chaves estrangeiras são habilitadas no SQLite e o email do usuário é único.
+
 ## Status
 
-Etapa 1 concluída: estrutura, configuração, conexão com SQLite, CORS e
-documentação automática. Os endpoints de negócio serão adicionados nas
-próximas etapas.
+- Etapa 1: estrutura, configuração, CORS e documentação automática.
+- Etapa 2: modelos `User` e `Ocorrencia`, relacionamento e criação automática
+  das tabelas.
+
+Os endpoints de negócio serão adicionados nas próximas etapas.
