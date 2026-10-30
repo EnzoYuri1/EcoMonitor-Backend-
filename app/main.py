@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.api import api_router
-from app.core.config import settings
+from app.core.config import Settings, settings
 from app.db.session import create_db_and_tables
 from app.docs import router as docs_router
 from app.schemas.info import InfoRead
@@ -123,60 +123,88 @@ SWAGGER_UI_PARAMETERS = {
 }
 
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    description=API_DESCRIPTION,
-    openapi_tags=TAGS_METADATA,
-    docs_url="/swagger",
-    swagger_ui_parameters=SWAGGER_UI_PARAMETERS,
-    lifespan=lifespan,
-)
-
-if settings.CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
-    )
-
-app.include_router(docs_router)
-app.include_router(api_router, prefix=settings.API_V1_STR)
-
-
-@app.get(
-    "/",
-    response_model=InfoRead,
-    operation_id="informacoes_obter",
-    tags=["Informações"],
-    summary="Consultar informações da API",
-    description=(
-        "Retorna o nome, a versão e os links da documentação e da "
-        "verificação de saúde. Não exige autenticação."
-    ),
-    response_description="Informações da API.",
-)
-def root() -> InfoRead:
-    return InfoRead(
-        nome=settings.PROJECT_NAME,
-        versao=settings.VERSION,
-        docs="/docs",
-        swagger="/swagger",
-        redoc="/redoc",
-        openapi="/openapi.json",
-        health="/health",
+def create_application(app_settings: Settings) -> FastAPI:
+    """Cria a instância FastAPI com as configurações da aplicação."""
+    return FastAPI(
+        title=app_settings.PROJECT_NAME,
+        version=app_settings.VERSION,
+        description=API_DESCRIPTION,
+        openapi_tags=TAGS_METADATA,
+        docs_url="/swagger",
+        swagger_ui_parameters=SWAGGER_UI_PARAMETERS,
+        lifespan=lifespan,
     )
 
 
-@app.get(
-    "/health",
-    operation_id="saude_verificar",
-    tags=["Saúde"],
-    summary="Verificar disponibilidade da API",
-    description="Retorna o estado da API. Não exige autenticação.",
-    response_description="API disponível.",
-)
-def health_check() -> dict[str, str]:
-    return {"status": "ok"}
+def configure_cors(application: FastAPI, app_settings: Settings) -> None:
+    """Configura o middleware CORS quando houver origens permitidas."""
+    if app_settings.CORS_ORIGINS:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=app_settings.CORS_ORIGINS,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type"],
+        )
+
+
+def register_routers(application: FastAPI, app_settings: Settings) -> None:
+    """Registra os roteadores de documentação e da API versionada."""
+    application.include_router(docs_router)
+    application.include_router(api_router, prefix=app_settings.API_V1_STR)
+
+
+def register_system_routes(
+    application: FastAPI, app_settings: Settings
+) -> None:
+    """Registra as rotas públicas de informações e saúde da API."""
+
+    def root() -> InfoRead:
+        return InfoRead(
+            nome=app_settings.PROJECT_NAME,
+            versao=app_settings.VERSION,
+            docs="/docs",
+            swagger="/swagger",
+            redoc="/redoc",
+            openapi="/openapi.json",
+            health="/health",
+        )
+
+    application.add_api_route(
+        "/",
+        root,
+        response_model=InfoRead,
+        operation_id="informacoes_obter",
+        tags=["Informações"],
+        summary="Consultar informações da API",
+        description=(
+            "Retorna o nome, a versão e os links da documentação e da "
+            "verificação de saúde. Não exige autenticação."
+        ),
+        response_description="Informações da API.",
+    )
+
+    def health_check() -> dict[str, str]:
+        return {"status": "ok"}
+
+    application.add_api_route(
+        "/health",
+        health_check,
+        operation_id="saude_verificar",
+        tags=["Saúde"],
+        summary="Verificar disponibilidade da API",
+        description="Retorna o estado da API. Não exige autenticação.",
+        response_description="API disponível.",
+    )
+
+
+def main(app_settings: Settings = settings) -> FastAPI:
+    """Monta a aplicação e orquestra suas etapas de configuração."""
+    application = create_application(app_settings)
+    configure_cors(application, app_settings)
+    register_routers(application, app_settings)
+    register_system_routes(application, app_settings)
+    return application
+
+
+app = main()
