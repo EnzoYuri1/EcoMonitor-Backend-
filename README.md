@@ -89,6 +89,27 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/auth/me `
 Senhas são armazenadas somente como hash Bcrypt. Tokens expiram conforme
 `ACCESS_TOKEN_EXPIRE_MINUTES` no `.env`.
 
+## Ocorrências
+
+Todas as rotas exigem `Authorization: Bearer <token>`.
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/v1/ocorrencias` | Lista com filtros opcionais |
+| POST | `/api/v1/ocorrencias` | Cadastra ocorrência |
+| GET | `/api/v1/ocorrencias/{id}` | Consulta por ID |
+| PUT | `/api/v1/ocorrencias/{id}` | Atualiza (somente responsável) |
+| DELETE | `/api/v1/ocorrencias/{id}` | Exclui (somente responsável) |
+
+Filtros da listagem:
+
+- `tipo`: `queimada` ou `desmatamento`.
+- `municipio`: busca parcial, sem diferenciar maiúsculas.
+- `data_inicio` e `data_fim`: datas ISO inclusivas.
+
+Qualquer usuário autenticado pode consultar os registros. Apenas o
+responsável (`created_by`) pode alterar ou excluir.
+
 ## Banco de dados
 
 O banco SQLite é criado automaticamente em `data/ecomonitor.db` na
@@ -105,5 +126,6 @@ Chaves estrangeiras são habilitadas no SQLite e o email do usuário é único.
 - Etapa 2: modelos `User` e `Ocorrencia`, relacionamento e criação automática
   das tabelas.
 - Etapa 3: cadastro, login JSON, hash Bcrypt e proteção de rotas com JWT.
+- Etapa 4: CRUD de ocorrências, filtros e permissões por responsável.
 
 Os endpoints de negócio serão adicionados nas próximas etapas.
