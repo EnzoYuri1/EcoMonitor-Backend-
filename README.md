@@ -65,6 +65,30 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 - ReDoc: http://127.0.0.1:8000/redoc
 - Saúde: http://127.0.0.1:8000/health
 
+## Autenticação
+
+O cadastro e o login recebem JSON. O token retornado deve ser enviado nas
+rotas protegidas como `Authorization: Bearer <token>`.
+
+```powershell
+# Cadastro
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/v1/auth/register `
+  -ContentType "application/json" `
+  -Body '{"nome":"Maria Silva","email":"maria@example.com","senha":"senhaSegura123"}'
+
+# Login
+$resposta = Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/v1/auth/login `
+  -ContentType "application/json" `
+  -Body '{"email":"maria@example.com","senha":"senhaSegura123"}'
+
+# Usuário autenticado
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/auth/me `
+  -Headers @{ Authorization = "Bearer $($resposta.access_token)" }
+```
+
+Senhas são armazenadas somente como hash Bcrypt. Tokens expiram conforme
+`ACCESS_TOKEN_EXPIRE_MINUTES` no `.env`.
+
 ## Banco de dados
 
 O banco SQLite é criado automaticamente em `data/ecomonitor.db` na
@@ -80,5 +104,6 @@ Chaves estrangeiras são habilitadas no SQLite e o email do usuário é único.
 - Etapa 1: estrutura, configuração, CORS e documentação automática.
 - Etapa 2: modelos `User` e `Ocorrencia`, relacionamento e criação automática
   das tabelas.
+- Etapa 3: cadastro, login JSON, hash Bcrypt e proteção de rotas com JWT.
 
 Os endpoints de negócio serão adicionados nas próximas etapas.

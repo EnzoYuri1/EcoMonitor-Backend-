@@ -2,23 +2,9 @@ from datetime import date
 
 import pytest
 from sqlalchemy.exc import IntegrityError, StatementError
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import SQLModel
 
 from app.models import Ocorrencia, TipoOcorrencia, User
-
-
-@pytest.fixture
-def session():
-    """Sessão isolada em banco SQLite em memória."""
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
 
 
 def _make_user(email: str = "teste@example.com") -> User:
