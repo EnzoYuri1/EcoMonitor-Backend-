@@ -13,7 +13,8 @@ http://127.0.0.1:8000/api/v1
 
 Documentação interativa:
 
-- Swagger: `http://127.0.0.1:8000/docs`
+- RapiDoc (recomendada): `http://127.0.0.1:8000/docs`
+- Swagger UI: `http://127.0.0.1:8000/swagger`
 - ReDoc: `http://127.0.0.1:8000/redoc`
 - OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
 
@@ -68,12 +69,13 @@ Resposta `200 OK`:
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
+  "token_type": "bearer",
+  "expires_in": 3600
 }
 ```
 
-Credenciais inválidas retornam `401` com a mesma mensagem para email
-inexistente ou senha incorreta.
+`expires_in` informa a validade do token em segundos. Credenciais inválidas
+retornam `401` com a mesma mensagem para email inexistente ou senha incorreta.
 
 ### 2.3 Envio do token
 
@@ -86,9 +88,9 @@ Authorization: Bearer <access_token>
 O token expira conforme `ACCESS_TOKEN_EXPIRE_MINUTES` (padrão: 60 minutos).
 Ao receber `401`, descarte o token e solicite novo login.
 
-No Swagger (`/docs`), clique em **Authorize** e informe apenas o token, sem
-a palavra `Bearer`. O cadeado ao lado das rotas indica que elas exigem
-autenticação e permanece visível mesmo depois da autorização.
+No RapiDoc (`/docs`), abra a seção de autenticação e informe apenas o token,
+sem a palavra `Bearer`. O token fica salvo entre recarregamentos da página.
+No Swagger UI (`/swagger`), use o botão **Authorize**.
 
 ### 2.4 Usuário autenticado
 
@@ -103,10 +105,10 @@ Resposta `200 OK`: mesmo formato do cadastro, sem senha ou hash.
 | POST | `/auth/register` | Não | Cadastrar usuário |
 | POST | `/auth/login` | Não | Obter token JWT |
 | GET | `/auth/me` | Bearer | Dados do usuário atual |
-| GET | `/ocorrencias` | Bearer | Listar com filtros |
+| GET | `/ocorrencias` | Bearer | Listar com filtros e paginação |
 | POST | `/ocorrencias` | Bearer | Cadastrar ocorrência |
 | GET | `/ocorrencias/{id}` | Bearer | Consultar por ID |
-| PUT | `/ocorrencias/{id}` | Bearer | Atualizar (responsável) |
+| PATCH | `/ocorrencias/{id}` | Bearer | Atualizar parcialmente (responsável) |
 | DELETE | `/ocorrencias/{id}` | Bearer | Excluir (responsável) |
 | GET | `/stats` | Bearer | Indicadores do dashboard |
 
@@ -170,15 +172,43 @@ Parâmetros opcionais, combináveis:
 | `municipio` | texto | Busca parcial, sem diferenciar maiúsculas |
 | `data_inicio` | `AAAA-MM-DD` | Data mínima, inclusive |
 | `data_fim` | `AAAA-MM-DD` | Data máxima, inclusive |
+| `page` | inteiro ≥ 1 | Página atual (padrão `1`) |
+| `page_size` | inteiro de 1 a 100 | Itens por página (padrão `20`) |
 
 Exemplo:
 
 ```http
-GET /ocorrencias?tipo=queimada&municipio=sin&data_inicio=2026-10-01&data_fim=2026-10-31
+GET /ocorrencias?tipo=queimada&municipio=sin&data_inicio=2026-10-01&data_fim=2026-10-31&page=1&page_size=20
 ```
 
-Resposta `200 OK`: lista de ocorrências no mesmo formato do cadastro, ordenada
-da data mais recente para a mais antiga.
+Resposta `200 OK`:
+
+```json
+{
+  "items": [
+    {
+      "id": 2,
+      "tipo": "queimada",
+      "municipio": "Sinop",
+      "estado": "MT",
+      "descricao": "Foco de queimada identificado próximo à rodovia.",
+      "latitude": -11.8642,
+      "longitude": -55.5025,
+      "data_ocorrencia": "2026-10-01",
+      "created_by": 1,
+      "created_at": "2026-10-30T14:00:00Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 20,
+  "pages": 1
+}
+```
+
+Os itens são ordenados da data mais recente para a mais antiga. `total` é o
+total de registros que atendem aos filtros, e `pages` é o número total de
+páginas.
 
 Se `data_inicio` for posterior a `data_fim`, a API retorna `400`.
 
@@ -193,7 +223,7 @@ Qualquer usuário autenticado pode consultar qualquer ocorrência.
 
 ### 4.4 Atualização
 
-`PUT /ocorrencias/{id}`
+`PATCH /ocorrencias/{id}`
 
 A atualização é parcial: envie apenas os campos que deseja alterar.
 
@@ -210,9 +240,9 @@ A atualização é parcial: envie apenas os campos que deseja alterar.
 - `404`: ocorrência não encontrada.
 - `422`: dados inválidos ou corpo vazio.
 
-Campos obrigatórios (`tipo`, `municipio`, `estado`, `descricao` e
-`data_ocorrencia`) não podem ser anulados. `latitude` e `longitude` podem ser
-enviados como `null` para remover a coordenada.
+`PUT` não é aceito nessa rota. Campos obrigatórios (`tipo`, `municipio`,
+`estado`, `descricao` e `data_ocorrencia`) não podem ser anulados. `latitude`
+e `longitude` podem ser enviados como `null` para remover a coordenada.
 
 ### 4.5 Exclusão
 
@@ -327,17 +357,18 @@ def login(email: str, senha: str) -> bool:
     return False
 
 
-def listar_ocorrencias(filtros: dict) -> list[dict]:
+def listar_ocorrencias(filtros: dict) -> dict:
+    parametros = {"page": 1, "page_size": 20, **filtros}
     response = requests.get(
         f"{API_URL}/ocorrencias",
         headers=api_headers(),
-        params=filtros,
+        params=parametros,
         timeout=10,
     )
     if response.status_code == 200:
         return response.json()
     mostrar_erro(response)
-    return []
+    return {"items": [], "total": 0, "page": 1, "page_size": 20, "pages": 0}
 
 
 def criar_ocorrencia(dados: dict) -> dict | None:
@@ -348,6 +379,19 @@ def criar_ocorrencia(dados: dict) -> dict | None:
         timeout=10,
     )
     if response.status_code == 201:
+        return response.json()
+    mostrar_erro(response)
+    return None
+
+
+def atualizar_ocorrencia(ocorrencia_id: int, dados: dict) -> dict | None:
+    response = requests.patch(
+        f"{API_URL}/ocorrencias/{ocorrencia_id}",
+        headers=api_headers(),
+        json=dados,
+        timeout=10,
+    )
+    if response.status_code == 200:
         return response.json()
     mostrar_erro(response)
     return None
@@ -368,10 +412,13 @@ def obter_estatisticas() -> dict:
 Recomendações:
 
 - Guarde o token apenas em `st.session_state`; nunca no código.
+- Use `expires_in` para saber quando renovar o login.
 - Envie sempre `timeout` nas chamadas.
 - Trate `401` limpando o token e voltando para a tela de login.
 - Não acesse o SQLite diretamente; todo acesso passa pela API.
 - Use datas ISO (`AAAA-MM-DD`) nos filtros e no formulário.
+- Na listagem, leia `items` e use `total`/`pages` para montar a paginação.
+- Para atualizar, envie apenas os campos alterados com `PATCH`.
 
 ## 8. Cloudflare Tunnel
 

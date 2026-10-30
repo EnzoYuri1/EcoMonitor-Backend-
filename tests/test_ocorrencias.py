@@ -53,6 +53,7 @@ def test_cadastro_de_ocorrencia(client):
     assert data["municipio"] == "Sinop"
     assert data["created_by"] == user_id
     assert data["created_at"]
+    assert response.headers["location"] == f"{BASE}/{data['id']}"
 
 
 def test_created_by_do_corpo_e_ignorado(client):
@@ -72,7 +73,10 @@ def test_rotas_de_ocorrencias_exigem_autenticacao(client):
     assert client.get(BASE).status_code == 401
     assert client.post(BASE, json=_payload()).status_code == 401
     assert client.get(f"{BASE}/1").status_code == 401
-    assert client.put(f"{BASE}/1", json={"municipio": "Sinop"}).status_code == 401
+    assert (
+        client.patch(f"{BASE}/1", json={"municipio": "Sinop"}).status_code
+        == 401
+    )
     assert client.delete(f"{BASE}/1").status_code == 401
 
 
@@ -85,7 +89,68 @@ def test_listagem_visivel_para_todos_autenticados(client):
     response = client.get(BASE, headers=headers_b)
 
     assert response.status_code == 200
-    assert len(response.json()) == 2
+    dados = response.json()
+    assert dados["total"] == 2
+    assert len(dados["items"]) == 2
+
+
+def test_listagem_paginada(client):
+    headers, _ = _autenticar(client, "autor@example.com")
+    for dia in range(1, 6):
+        _criar(
+            client,
+            headers,
+            data_ocorrencia=f"2026-10-{dia:02d}",
+            municipio=f"Cidade {dia}",
+        )
+
+    primeira = client.get(
+        BASE,
+        params={"page": 1, "page_size": 2},
+        headers=headers,
+    )
+    assert primeira.status_code == 200
+    dados = primeira.json()
+    assert dados["total"] == 5
+    assert dados["page"] == 1
+    assert dados["page_size"] == 2
+    assert dados["pages"] == 3
+    assert [item["municipio"] for item in dados["items"]] == [
+        "Cidade 5",
+        "Cidade 4",
+    ]
+
+    ultima = client.get(
+        BASE,
+        params={"page": 3, "page_size": 2},
+        headers=headers,
+    )
+    assert len(ultima.json()["items"]) == 1
+
+    vazia = client.get(
+        BASE,
+        params={"page": 9, "page_size": 2},
+        headers=headers,
+    )
+    assert vazia.json()["items"] == []
+    assert vazia.json()["total"] == 5
+
+
+def test_paginacao_com_parametros_invalidos(client):
+    headers, _ = _autenticar(client, "autor@example.com")
+
+    assert (
+        client.get(BASE, params={"page": 0}, headers=headers).status_code
+        == 422
+    )
+    assert (
+        client.get(
+            BASE,
+            params={"page_size": 101},
+            headers=headers,
+        ).status_code
+        == 422
+    )
 
 
 def test_filtro_por_tipo(client):
@@ -96,7 +161,7 @@ def test_filtro_por_tipo(client):
     response = client.get(BASE, params={"tipo": "queimada"}, headers=headers)
 
     assert response.status_code == 200
-    dados = response.json()
+    dados = response.json()["items"]
     assert len(dados) == 1
     assert dados[0]["tipo"] == "queimada"
 
@@ -112,7 +177,7 @@ def test_filtro_por_municipio_parcial_e_sem_caixa(client):
     response = client.get(BASE, params={"municipio": "SIN"}, headers=headers)
 
     assert response.status_code == 200
-    dados = response.json()
+    dados = response.json()["items"]
     assert len(dados) == 1
     assert dados[0]["municipio"] == "Sinop"
 
@@ -130,7 +195,7 @@ def test_filtro_por_periodo_inclusivo(client):
     )
 
     assert response.status_code == 200
-    dados = response.json()
+    dados = response.json()["items"]
     assert len(dados) == 1
     assert dados[0]["data_ocorrencia"] == "2026-10-10"
 
@@ -139,7 +204,7 @@ def test_filtro_por_periodo_inclusivo(client):
         params={"data_inicio": "2026-10-10", "data_fim": "2026-10-10"},
         headers=headers,
     )
-    assert len(exato.json()) == 1
+    assert len(exato.json()["items"]) == 1
 
 
 def test_periodo_invalido_retorna_400(client):
@@ -171,7 +236,7 @@ def test_atualizacao_pelo_responsavel(client):
     headers, user_id = _autenticar(client, "autor@example.com")
     ocorrencia = _criar(client, headers)
 
-    response = client.put(
+    response = client.patch(
         f"{BASE}/{ocorrencia['id']}",
         json={"municipio": "Cuiabá", "estado": "mt", "latitude": None},
         headers=headers,
@@ -192,7 +257,7 @@ def test_atualizacao_por_outro_usuario_retorna_403(client):
     headers_b, _ = _autenticar(client, "leitor@example.com")
     ocorrencia = _criar(client, headers_a)
 
-    response = client.put(
+    response = client.patch(
         f"{BASE}/{ocorrencia['id']}",
         json={"municipio": "Alterado"},
         headers=headers_b,
@@ -206,7 +271,7 @@ def test_atualizacao_por_outro_usuario_retorna_403(client):
 def test_atualizacao_de_ocorrencia_inexistente_retorna_404(client):
     headers, _ = _autenticar(client, "autor@example.com")
 
-    response = client.put(
+    response = client.patch(
         f"{BASE}/999999",
         json={"municipio": "Cuiabá"},
         headers=headers,
@@ -221,17 +286,21 @@ def test_validacoes_de_atualizacao(client):
     url = f"{BASE}/{ocorrencia['id']}"
     amanha = (date.today() + timedelta(days=1)).isoformat()
 
-    assert client.put(url, json={}, headers=headers).status_code == 422
+    assert client.patch(url, json={}, headers=headers).status_code == 422
     assert (
-        client.put(url, json={"municipio": None}, headers=headers).status_code
+        client.patch(
+            url,
+            json={"municipio": None},
+            headers=headers,
+        ).status_code
         == 422
     )
     assert (
-        client.put(url, json={"estado": "XX"}, headers=headers).status_code
+        client.patch(url, json={"estado": "XX"}, headers=headers).status_code
         == 422
     )
     assert (
-        client.put(
+        client.patch(
             url,
             json={"data_ocorrencia": amanha},
             headers=headers,
@@ -239,7 +308,7 @@ def test_validacoes_de_atualizacao(client):
         == 422
     )
     assert (
-        client.put(url, json={"latitude": 100}, headers=headers).status_code
+        client.patch(url, json={"latitude": 100}, headers=headers).status_code
         == 422
     )
 
@@ -251,7 +320,8 @@ def test_exclusao_pelo_responsavel(client):
     response = client.delete(f"{BASE}/{ocorrencia['id']}", headers=headers)
 
     assert response.status_code == 204
-    assert client.get(f"{BASE}/{ocorrencia['id']}", headers=headers).status_code == 404
+    consulta = client.get(f"{BASE}/{ocorrencia['id']}", headers=headers)
+    assert consulta.status_code == 404
 
 
 def test_exclusao_por_outro_usuario_retorna_403(client):

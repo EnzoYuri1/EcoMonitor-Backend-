@@ -62,6 +62,7 @@ def test_login_retorna_token(client):
     data = response.json()
     assert data["token_type"] == "bearer"
     assert data["access_token"]
+    assert data["expires_in"] == 3600
 
 
 def test_login_com_senha_incorreta(client):

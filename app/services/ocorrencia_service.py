@@ -29,29 +29,41 @@ def list_ocorrencias(
     municipio: str | None = None,
     data_inicio: date | None = None,
     data_fim: date | None = None,
-) -> list[Ocorrencia]:
-    """Lista ocorrências com filtros opcionais."""
-    statement = select(Ocorrencia)
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[Ocorrencia], int]:
+    """Lista ocorrências paginadas com filtros opcionais."""
+    filtros = []
 
     if tipo is not None:
-        statement = statement.where(Ocorrencia.tipo == tipo)
+        filtros.append(Ocorrencia.tipo == tipo)
     if municipio:
         valor = municipio.strip().lower()
-        statement = statement.where(
+        filtros.append(
             func.lower(Ocorrencia.municipio).contains(valor, autoescape=True)
         )
     if data_inicio is not None:
-        statement = statement.where(
-            Ocorrencia.data_ocorrencia >= data_inicio
-        )
+        filtros.append(Ocorrencia.data_ocorrencia >= data_inicio)
     if data_fim is not None:
-        statement = statement.where(Ocorrencia.data_ocorrencia <= data_fim)
+        filtros.append(Ocorrencia.data_ocorrencia <= data_fim)
 
-    statement = statement.order_by(
-        Ocorrencia.data_ocorrencia.desc(),
-        Ocorrencia.id.desc(),
+    total_statement = select(func.count()).select_from(Ocorrencia)
+    data_statement = select(Ocorrencia)
+    if filtros:
+        total_statement = total_statement.where(*filtros)
+        data_statement = data_statement.where(*filtros)
+
+    total = session.exec(total_statement).one()
+    data_statement = (
+        data_statement.order_by(
+            Ocorrencia.data_ocorrencia.desc(),
+            Ocorrencia.id.desc(),
+        )
+        .offset((page - 1) * page_size)
+        .limit(page_size)
     )
-    return list(session.exec(statement).all())
+    ocorrencias = list(session.exec(data_statement).all())
+    return ocorrencias, total
 
 
 def get_ocorrencia(

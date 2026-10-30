@@ -22,8 +22,10 @@ Streamlit do EcoMonitor.
 EcoMonitor-Backend/
 ├── app/
 │   ├── main.py
+│   ├── docs.py
 │   ├── api/v1/
 │   │   ├── api.py
+│   │   ├── responses.py
 │   │   └── endpoints/
 │   │       ├── auth.py
 │   │       ├── ocorrencias.py
@@ -37,6 +39,8 @@ EcoMonitor-Backend/
 │   │   ├── user.py
 │   │   └── ocorrencia.py
 │   ├── schemas/
+│   │   ├── common.py
+│   │   ├── info.py
 │   │   ├── user.py
 │   │   ├── ocorrencia.py
 │   │   └── stats.py
@@ -91,31 +95,36 @@ demonstrativos.
 ```
 
 - API: `http://127.0.0.1:8000`
-- Swagger: `http://127.0.0.1:8000/docs`
+- RapiDoc: `http://127.0.0.1:8000/docs`
+- Swagger UI: `http://127.0.0.1:8000/swagger`
 - ReDoc: `http://127.0.0.1:8000/redoc`
+- OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
 - Saúde: `http://127.0.0.1:8000/health`
 
 O banco e as tabelas são criados automaticamente em `data/ecomonitor.db`.
 
 ### Documentação interativa
 
-O Swagger em `/docs` está configurado para facilitar a leitura:
+A documentação principal fica em `/docs` e usa **RapiDoc**, escolhido por ter
+uma leitura mais limpa e direta que o Swagger:
 
-- rotas recolhidas por padrão;
-- campo de busca;
-- seção de schemas oculta;
-- token mantido após recarregar a página;
-- descrições e exemplos nos filtros.
+- navegação lateral por grupo de endpoints;
+- busca por rota;
+- console para testar requisições;
+- autenticação persistente entre recarregamentos;
+- exemplos de payload e de resposta.
+
+O **Swagger UI** continua disponível em `/swagger`, e o **ReDoc** em `/redoc`.
 
 Para testar rotas protegidas:
 
 1. Cadastre um usuário em `POST /api/v1/auth/register`.
 2. Faça login em `POST /api/v1/auth/login` e copie o `access_token`.
-3. Clique em **Authorize** e informe apenas o token.
-4. As rotas com cadeado exigem o cabeçalho `Authorization: Bearer <token>`.
+3. Na documentação, abra a seção de autenticação e informe apenas o token.
+4. As rotas protegidas usam o cabeçalho `Authorization: Bearer <token>`.
 
-O cadeado é apenas um indicador de segurança; ele não bloqueia a requisição
-depois que o token é informado. O `/redoc` continua disponível para leitura.
+A resposta do login inclui `expires_in`, com a validade do token em segundos.
+Ao receber `401`, faça login novamente.
 
 ## Endpoints
 
@@ -129,7 +138,8 @@ Prefixo: `/api/v1`.
 | POST | `/auth/login` | Não | Autenticar e retornar JWT |
 | GET | `/auth/me` | Bearer | Usuário autenticado |
 
-Login e cadastro recebem JSON. Nas rotas protegidas, envie:
+Login e cadastro recebem JSON. A resposta do login contém `access_token`,
+`token_type` e `expires_in` (validade em segundos). Nas rotas protegidas, envie:
 
 ```http
 Authorization: Bearer <access_token>
@@ -139,10 +149,10 @@ Authorization: Bearer <access_token>
 
 | Método | Rota | Autenticação | Descrição |
 |---|---|---|---|
-| GET | `/ocorrencias` | Bearer | Listar com filtros |
+| GET | `/ocorrencias` | Bearer | Listar com filtros e paginação |
 | POST | `/ocorrencias` | Bearer | Cadastrar ocorrência |
 | GET | `/ocorrencias/{id}` | Bearer | Consultar por ID |
-| PUT | `/ocorrencias/{id}` | Bearer | Atualizar (responsável) |
+| PATCH | `/ocorrencias/{id}` | Bearer | Atualizar parcialmente (responsável) |
 | DELETE | `/ocorrencias/{id}` | Bearer | Excluir (responsável) |
 
 Filtros da listagem:
@@ -150,10 +160,25 @@ Filtros da listagem:
 - `tipo`: `queimada` ou `desmatamento`.
 - `municipio`: busca parcial, sem diferenciar maiúsculas.
 - `data_inicio` e `data_fim`: datas ISO inclusivas.
+- `page`: página, começando em `1` (padrão `1`).
+- `page_size`: itens por página, de `1` a `100` (padrão `20`).
+
+A listagem retorna um envelope paginado:
+
+```json
+{
+  "items": [],
+  "total": 0,
+  "page": 1,
+  "page_size": 20,
+  "pages": 0
+}
+```
 
 Qualquer usuário autenticado pode consultar os registros. Apenas o responsável
 (`created_by`) pode alterar ou excluir. O responsável é sempre definido pelo
-token, nunca pelo corpo da requisição.
+token, nunca pelo corpo da requisição. O `PATCH` atualiza apenas os campos
+enviados; `PUT` não é aceito.
 
 ### Estatísticas
 
@@ -178,7 +203,8 @@ requisições, respostas, erros, filtros e código com `requests`.
 
 Os testes usam um banco SQLite em memória e não alteram o banco local. Cobrem
 autenticação, cadastro e duplicidade de email, login, tokens inválidos e
-expirados, CRUD de ocorrências, filtros, permissões, validações e estatísticas.
+expirados, CRUD de ocorrências, paginação, filtros, permissões, validações,
+estatísticas e a documentação OpenAPI.
 
 ## Segurança
 
@@ -223,10 +249,12 @@ autorização.
 
 Implementado e testado:
 
-- Estrutura, configuração, SQLite, CORS e documentação automática.
+- Estrutura, configuração, SQLite e CORS.
+- Documentação em RapiDoc (`/docs`), Swagger UI (`/swagger`) e ReDoc (`/redoc`).
 - Modelos `User` e `Ocorrencia` com relacionamento e integridade referencial.
-- Cadastro, login JSON, Bcrypt e JWT.
-- CRUD de ocorrências, filtros e permissões.
+- Cadastro, login JSON, Bcrypt e JWT com `expires_in`.
+- CRUD de ocorrências com paginação, filtros e permissões.
+- Atualização parcial com `PATCH` e cabeçalho `Location` na criação.
 - Estatísticas agregadas no SQLite.
 - Guia de integração para o frontend.
 

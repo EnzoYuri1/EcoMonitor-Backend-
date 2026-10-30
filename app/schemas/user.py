@@ -118,12 +118,18 @@ class Token(BaseModel):
         examples=["bearer"],
         description="Tipo do token; deve ser enviado como Bearer.",
     )
+    expires_in: int = Field(
+        ge=1,
+        examples=[3600],
+        description="Validade do token em segundos.",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "token_type": "bearer",
+                "expires_in": 3600,
             }
         }
     )

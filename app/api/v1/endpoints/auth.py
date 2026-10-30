@@ -7,6 +7,7 @@ from app.api.v1.responses import (
     UNAUTHORIZED_RESPONSE,
     VALIDATION_ERROR_RESPONSE,
 )
+from app.core.config import settings
 from app.core.security import create_access_token, get_current_user
 from app.db.session import get_session
 from app.models import User
@@ -20,6 +21,7 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
     "/register",
     response_model=UserRead,
     status_code=status.HTTP_201_CREATED,
+    operation_id="auth_registrar",
     summary="Cadastrar novo usuário",
     description=(
         "Cria um usuário com email único. A senha é armazenada apenas "
@@ -56,12 +58,13 @@ def register(
 @router.post(
     "/login",
     response_model=Token,
+    operation_id="auth_login",
     summary="Autenticar usuário",
     description=(
         "Valida email e senha em JSON e retorna um token JWT para uso "
         "no cabeçalho Authorization.\n\n"
-        "Copie o `access_token` e clique em **Authorize** para liberar as "
-        "rotas protegidas."
+        "Copie o `access_token` e informe-o na seção de autenticação da "
+        "documentação para liberar as rotas protegidas."
     ),
     response_description="Token JWT gerado com sucesso.",
     responses={
@@ -85,12 +88,16 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return Token(access_token=create_access_token(user.id))
+    return Token(
+        access_token=create_access_token(user.id),
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
 
 
 @router.get(
     "/me",
     response_model=UserRead,
+    operation_id="auth_usuario_atual",
     summary="Consultar usuário autenticado",
     description=(
         "Retorna os dados do usuário identificado pelo token JWT enviado "

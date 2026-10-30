@@ -14,6 +14,7 @@ router = APIRouter(prefix="/stats", tags=["Estatísticas"])
 @router.get(
     "",
     response_model=StatsRead,
+    operation_id="estatisticas_obter",
     summary="Obter estatísticas ambientais",
     description=(
         "Retorna totais de ocorrências, queimadas, desmatamentos e a "
