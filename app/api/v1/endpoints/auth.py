@@ -2,6 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
+from app.api.v1.responses import (
+    CONFLICT_RESPONSE,
+    UNAUTHORIZED_RESPONSE,
+    VALIDATION_ERROR_RESPONSE,
+)
 from app.core.security import create_access_token, get_current_user
 from app.db.session import get_session
 from app.models import User
@@ -18,9 +23,15 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
     summary="Cadastrar novo usuário",
     description=(
         "Cria um usuário com email único. A senha é armazenada apenas "
-        "como hash Bcrypt."
+        "como hash Bcrypt.\n\n"
+        "**Regras:** nome entre 2 e 120 caracteres; email válido e único; "
+        "senha entre 8 e 72 caracteres."
     ),
-    responses={409: {"description": "Email já cadastrado."}},
+    response_description="Usuário criado com sucesso.",
+    responses={
+        409: CONFLICT_RESPONSE,
+        422: VALIDATION_ERROR_RESPONSE,
+    },
 )
 def register(
     user_in: UserCreate,
@@ -48,9 +59,15 @@ def register(
     summary="Autenticar usuário",
     description=(
         "Valida email e senha em JSON e retorna um token JWT para uso "
-        "no cabeçalho Authorization."
+        "no cabeçalho Authorization.\n\n"
+        "Copie o `access_token` e clique em **Authorize** para liberar as "
+        "rotas protegidas."
     ),
-    responses={401: {"description": "Email ou senha incorretos."}},
+    response_description="Token JWT gerado com sucesso.",
+    responses={
+        401: {"description": "Email ou senha incorretos."},
+        422: VALIDATION_ERROR_RESPONSE,
+    },
 )
 def login(
     credentials: UserLogin,
@@ -79,7 +96,8 @@ def login(
         "Retorna os dados do usuário identificado pelo token JWT enviado "
         "no cabeçalho Authorization."
     ),
-    responses={401: {"description": "Token ausente, inválido ou expirado."}},
+    response_description="Dados do usuário autenticado.",
+    responses={401: UNAUTHORIZED_RESPONSE},
 )
 def read_current_user(
     current_user: User = Depends(get_current_user),

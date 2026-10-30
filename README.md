@@ -97,6 +97,26 @@ demonstrativos.
 
 O banco e as tabelas são criados automaticamente em `data/ecomonitor.db`.
 
+### Documentação interativa
+
+O Swagger em `/docs` está configurado para facilitar a leitura:
+
+- rotas recolhidas por padrão;
+- campo de busca;
+- seção de schemas oculta;
+- token mantido após recarregar a página;
+- descrições e exemplos nos filtros.
+
+Para testar rotas protegidas:
+
+1. Cadastre um usuário em `POST /api/v1/auth/register`.
+2. Faça login em `POST /api/v1/auth/login` e copie o `access_token`.
+3. Clique em **Authorize** e informe apenas o token.
+4. As rotas com cadeado exigem o cabeçalho `Authorization: Bearer <token>`.
+
+O cadeado é apenas um indicador de segurança; ele não bloqueia a requisição
+depois que o token é informado. O `/redoc` continua disponível para leitura.
+
 ## Endpoints
 
 Prefixo: `/api/v1`.

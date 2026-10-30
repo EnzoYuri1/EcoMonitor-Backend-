@@ -86,6 +86,10 @@ Authorization: Bearer <access_token>
 O token expira conforme `ACCESS_TOKEN_EXPIRE_MINUTES` (padrão: 60 minutos).
 Ao receber `401`, descarte o token e solicite novo login.
 
+No Swagger (`/docs`), clique em **Authorize** e informe apenas o token, sem
+a palavra `Bearer`. O cadeado ao lado das rotas indica que elas exigem
+autenticação e permanece visível mesmo depois da autorização.
+
 ### 2.4 Usuário autenticado
 
 `GET /auth/me`

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
+from app.api.v1.responses import UNAUTHORIZED_RESPONSE
 from app.core.security import get_current_user
 from app.db.session import get_session
 from app.models import User
@@ -17,9 +18,12 @@ router = APIRouter(prefix="/stats", tags=["Estatísticas"])
     description=(
         "Retorna totais de ocorrências, queimadas, desmatamentos e a "
         "distribuição por município e por tipo, calculados diretamente no "
-        "banco SQLite."
+        "banco SQLite.\n\n"
+        "O campo `por_tipo` sempre inclui os dois tipos, mesmo quando o "
+        "total é zero."
     ),
-    responses={401: {"description": "Token ausente, inválido ou expirado."}},
+    response_description="Indicadores calculados com sucesso.",
+    responses={401: UNAUTHORIZED_RESPONSE},
 )
 def get_stats(
     session: Session = Depends(get_session),

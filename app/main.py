@@ -16,13 +16,83 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+API_DESCRIPTION = """
+API REST do EcoMonitor para monitoramento de queimadas e desmatamento.
+
+## Como autenticar
+
+1. Crie um usuário em `POST /api/v1/auth/register`.
+2. Faça login em `POST /api/v1/auth/login` e copie o `access_token`.
+3. Clique em **Authorize**, no topo da página, e informe apenas o token.
+4. As rotas com cadeado exigem o cabeçalho `Authorization: Bearer <token>`.
+
+> O cadastro não retorna token. O token tem validade configurável e, ao
+> expirar, basta fazer login novamente.
+
+## Códigos de status
+
+| Código | Significado |
+|---|---|
+| `200` | Requisição concluída com sucesso. |
+| `201` | Recurso criado com sucesso. |
+| `204` | Recurso removido com sucesso, sem corpo na resposta. |
+| `400` | Parâmetros inválidos, como período invertido. |
+| `401` | Token ausente, inválido, expirado ou credenciais incorretas. |
+| `403` | Usuário autenticado sem permissão sobre o recurso. |
+| `404` | Recurso não encontrado. |
+| `409` | Conflito, como email já cadastrado. |
+| `422` | Dados enviados não passaram na validação. |
+
+## Documentação alternativa
+
+- **Swagger UI:** `/docs`
+- **ReDoc:** `/redoc`
+- **OpenAPI JSON:** `/openapi.json`
+"""
+
+TAGS_METADATA = [
+    {
+        "name": "Autenticação",
+        "description": (
+            "Cadastro, login e consulta do usuário autenticado. "
+            "`register` e `login` são públicas; `me` exige Bearer token."
+        ),
+    },
+    {
+        "name": "Ocorrências",
+        "description": (
+            "Cadastro, consulta, filtros, atualização e exclusão de "
+            "ocorrências ambientais. Todas exigem Bearer token. Somente o "
+            "responsável pode alterar ou excluir."
+        ),
+    },
+    {
+        "name": "Estatísticas",
+        "description": (
+            "Indicadores agregados para o dashboard. Exige Bearer token."
+        ),
+    },
+    {
+        "name": "Saúde",
+        "description": "Verificação de disponibilidade da API.",
+    },
+]
+
+SWAGGER_UI_PARAMETERS = {
+    "docExpansion": "list",
+    "defaultModelsExpandDepth": -1,
+    "filter": True,
+    "persistAuthorization": True,
+    "displayRequestDuration": True,
+}
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description=(
-        "API REST do EcoMonitor para monitoramento de queimadas e "
-        "desmatamento. Documentação interativa em `/docs` e `/redoc`."
-    ),
+    description=API_DESCRIPTION,
+    openapi_tags=TAGS_METADATA,
+    swagger_ui_parameters=SWAGGER_UI_PARAMETERS,
     lifespan=lifespan,
 )
 
@@ -43,6 +113,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
     tags=["Saúde"],
     summary="Verificar disponibilidade da API",
     description="Retorna o estado da API. Não exige autenticação.",
+    response_description="API disponível.",
 )
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
