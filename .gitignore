@@ -4,14 +4,20 @@ venv/
 
 # Variáveis de ambiente
 .env
+.env.*
+!.env.example
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
 
 # Banco de dados local
 data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
 data/*.sqlite3
 
 # Testes e ferramentas

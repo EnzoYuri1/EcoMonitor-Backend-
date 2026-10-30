@@ -36,3 +36,20 @@ if not settings.SECRET_KEY:
         "SECRET_KEY não configurada. Copie .env.example para .env e "
         "gere uma chave segura."
     )
+
+if settings.SECRET_KEY == "troque-por-uma-chave-secreta-gerada-localmente":
+    raise RuntimeError(
+        "SECRET_KEY ainda contém o valor de exemplo. Gere uma chave "
+        "exclusiva com secrets.token_urlsafe(48)."
+    )
+
+if len(settings.SECRET_KEY) < 32:
+    raise RuntimeError("SECRET_KEY deve ter pelo menos 32 caracteres.")
+
+if settings.ACCESS_TOKEN_EXPIRE_MINUTES <= 0:
+    raise RuntimeError("ACCESS_TOKEN_EXPIRE_MINUTES deve ser positivo.")
+
+if "*" in settings.CORS_ORIGINS:
+    raise RuntimeError(
+        "CORS_ORIGINS não pode conter '*' com credenciais habilitadas."
+    )
