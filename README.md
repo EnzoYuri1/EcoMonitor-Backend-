@@ -50,6 +50,8 @@ EcoMonitor-Backend/
 │       └── stats_service.py
 ├── docs/
 │   └── INTEGRACAO_FRONTEND.md
+├── scripts/
+│   └── seed_exemplos.py
 ├── tests/
 ├── data/
 ├── .env.example
@@ -205,6 +207,28 @@ Os testes usam um banco SQLite em memória e não alteram o banco local. Cobrem
 autenticação, cadastro e duplicidade de email, login, tokens inválidos e
 expirados, CRUD de ocorrências, paginação, filtros, permissões, validações,
 estatísticas e a documentação OpenAPI.
+
+## Dados de demonstração (opcional)
+
+O script `scripts/seed_exemplos.py` cadastra 40 ocorrências fictícias
+(20 queimadas e 20 desmatamentos) no banco configurado, distribuídas nos
+últimos 12 meses e vinculadas ao usuário de id 2 (Maria). Os registros ficam
+marcados com o prefixo `[exemplo]` na descrição para não se confundirem com
+dados reais.
+
+```powershell
+# Cadastra os 40 exemplos (não duplica se já existirem)
+.\.venv\Scripts\python.exe scripts\seed_exemplos.py
+
+# Remove somente os registros marcados com [exemplo]
+.\.venv\Scripts\python.exe scripts\seed_exemplos.py --limpar
+
+# Remove os exemplos e cadastra novamente
+.\.venv\Scripts\python.exe scripts\seed_exemplos.py --recriar
+```
+
+Use `--usuario-id N` para vincular os exemplos a outro usuário. As ocorrências
+reais existentes não são alteradas nem removidas.
 
 ## Segurança
 
