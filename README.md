@@ -29,7 +29,8 @@ EcoMonitor-Backend/
 │   │   └── endpoints/
 │   │       ├── auth.py
 │   │       ├── ocorrencias.py
-│   │       └── stats.py
+│   │       ├── stats.py
+│   │       └── assistente.py
 │   ├── core/
 │   │   ├── config.py
 │   │   └── security.py
@@ -43,13 +44,16 @@ EcoMonitor-Backend/
 │   │   ├── info.py
 │   │   ├── user.py
 │   │   ├── ocorrencia.py
-│   │   └── stats.py
+│   │   ├── stats.py
+│   │   └── assistente.py
 │   └── services/
 │       ├── auth_service.py
 │       ├── ocorrencia_service.py
-│       └── stats_service.py
+│       ├── stats_service.py
+│       └── assistente_service.py
 ├── docs/
-│   └── INTEGRACAO_FRONTEND.md
+│   ├── INTEGRACAO_FRONTEND.md
+│   └── GUIA_ANALISTA.md
 ├── scripts/
 │   └── seed_exemplos.py
 ├── tests/
@@ -86,6 +90,12 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Validade do token em minutos |
 | `DATABASE_URL` | `sqlite:///./data/ecomonitor.db` | Banco SQLite |
 | `CORS_ORIGINS` | vazio | Origens permitidas, separadas por vírgula; defina no `.env` para liberar o frontend |
+| `ASSISTENTE_HABILITADO` | `true` | Liga/desliga o assistente de IA |
+| `OPENROUTER_API_KEY` | vazio | Chave gratuita do OpenRouter (`https://openrouter.ai/keys`); vazia = assistente responde "não configurado" |
+| `OPENROUTER_MODEL` | `openrouter/free` | Modelo gratuito usado (ex.: `openrouter/free`, `google/gemma-4-31b-it:free`) |
+| `OPENROUTER_TIMEOUT` | `30` | Tempo máximo de espera da resposta, em segundos |
+| `OPENROUTER_SITE_URL` | vazio | URL do projeto enviada ao OpenRouter (cabeçalho `HTTP-Referer`) |
+| `OPENROUTER_SITE_NAME` | vazio | Nome do projeto enviado ao OpenRouter (cabeçalho `X-Title`) |
 
 O arquivo `.env` não é versionado. O `.env.example` contém apenas valores
 demonstrativos.
@@ -191,6 +201,47 @@ enviados; `PUT` não é aceito.
 Retorna total de ocorrências, queimadas, desmatamentos e distribuição por
 município e por tipo, calculados no SQLite.
 
+### Assistente de IA
+
+| Método | Rota | Autenticação | Descrição |
+|---|---|---|---|
+| POST | `/assistente` | Bearer | Perguntar ao assistente (OpenRouter) |
+
+Corpo:
+
+```json
+{
+  "mensagem": "Como cadastro uma queimada?",
+  "historico": [
+    { "role": "user", "content": "O que é o EcoMonitor?" },
+    { "role": "assistant", "content": "Um sistema de monitoramento." }
+  ]
+}
+```
+
+Resposta:
+
+```json
+{
+  "resposta": "Para cadastrar uma queimada, vá ao menu \"Nova ocorrência\"...",
+  "modelo": "openrouter/free"
+}
+```
+
+Regras e comportamento:
+
+- `mensagem`: obrigatória, com até 1.000 caracteres (espaços nas bordas são
+  ignorados); `historico`: no máximo as 6 últimas mensagens, com `role`
+  `user` ou `assistant`.
+- O backend monta o contexto com `docs/GUIA_ANALISTA.md` e as estatísticas
+  do banco; o modelo não vê descrições de ocorrências individuais.
+- O assistente somente orienta: não cria, edita nem exclui dados e não
+  substitui a avaliação técnica/legal do analista.
+- Limites por usuário: 1 pergunta a cada 3 segundos e 40 por dia, além da
+  cota gratuita do OpenRouter (20 requisições/minuto e 50/dia sem créditos).
+- Erros amigáveis: `429` (limite atingido), `502` (provedor falhou) e
+  `503` (desativado, sem chave, chave inválida ou indisponível).
+
 ## Documentação para o frontend
 
 O guia completo para integração com o Streamlit está em
@@ -203,10 +254,12 @@ requisições, respostas, erros, filtros e código com `requests`.
 .\.venv\Scripts\python.exe -m pytest -v
 ```
 
-Os testes usam um banco SQLite em memória e não alteram o banco local. Cobrem
-autenticação, cadastro e duplicidade de email, login, tokens inválidos e
-expirados, CRUD de ocorrências, paginação, filtros, permissões, validações,
-estatísticas e a documentação OpenAPI.
+Os testes usam um banco SQLite em memória e não alteram o banco local. As
+chamadas ao OpenRouter são simuladas (mock). Cobrem autenticação, cadastro e
+duplicidade de email, login, tokens inválidos e expirados, CRUD de
+ocorrências, paginação, filtros, permissões, validações, estatísticas,
+documentação OpenAPI e o assistente de IA (sucesso, validação, autenticação,
+limites, chave ausente, desativado, timeout, cota e resposta vazia).
 
 ## Dados de demonstração (opcional)
 
@@ -234,9 +287,12 @@ reais existentes não são alteradas nem removidas.
 
 - Senhas protegidas com Bcrypt; nunca armazenadas em texto puro.
 - JWT assinado com `SECRET_KEY` carregada do ambiente.
-- Rotas de ocorrências e estatísticas protegidas por Bearer token.
+- Rotas de ocorrências, estatísticas e assistente protegidas por Bearer token.
 - Edição e exclusão restritas ao responsável.
 - Validação de email, senha, UF, datas e coordenadas.
+- Chave do OpenRouter fica somente no `.env` do backend; o frontend nunca a vê.
+- O assistente não envia descrições de ocorrências nem dados pessoais ao
+  provedor; vai apenas a pergunta, histórico curto e estatísticas agregadas.
 - CORS restrito às origens configuradas, sem curinga com credenciais.
 - `.env`, `.venv` e bancos locais ignorados pelo Git.
 
@@ -281,6 +337,9 @@ Implementado e testado:
 - Atualização parcial com `PATCH` e cabeçalho `Location` na criação.
 - Estatísticas agregadas no SQLite.
 - Guia de integração para o frontend.
+- Assistente de dúvidas via OpenRouter (endpoint autenticado, contexto por
+  guia + estatísticas, limites por usuário e erros amigáveis).
+- `docs/GUIA_ANALISTA.md` como base de conhecimento editável do assistente.
 
 Pendente apenas de ação externa: autenticação no GitHub e publicação do
 repositório privado.
