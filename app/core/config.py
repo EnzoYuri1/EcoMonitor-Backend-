@@ -28,6 +28,17 @@ class Settings:
         if origin.strip()
     ]
 
+    # Assistente de IA (OpenRouter)
+    ASSISTENTE_HABILITADO: bool = (
+        os.getenv("ASSISTENTE_HABILITADO", "true").strip().lower()
+        in {"1", "true", "sim", "yes"}
+    )
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "openrouter/free")
+    OPENROUTER_TIMEOUT: int = int(os.getenv("OPENROUTER_TIMEOUT", "30"))
+    OPENROUTER_SITE_URL: str = os.getenv("OPENROUTER_SITE_URL", "")
+    OPENROUTER_SITE_NAME: str = os.getenv("OPENROUTER_SITE_NAME", "")
+
 
 settings = Settings()
 
@@ -52,4 +63,9 @@ if settings.ACCESS_TOKEN_EXPIRE_MINUTES <= 0:
 if "*" in settings.CORS_ORIGINS:
     raise RuntimeError(
         "CORS_ORIGINS não pode conter '*' com credenciais habilitadas."
+    )
+
+if settings.OPENROUTER_TIMEOUT <= 0:
+    raise RuntimeError(
+        "OPENROUTER_TIMEOUT deve ser um número de segundos positivo."
     )
