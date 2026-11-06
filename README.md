@@ -85,7 +85,7 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 | `ALGORITHM` | `HS256` | Algoritmo do JWT |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Validade do token em minutos |
 | `DATABASE_URL` | `sqlite:///./data/ecomonitor.db` | Banco SQLite |
-| `CORS_ORIGINS` | `http://localhost:8501,http://127.0.0.1:8501` | Origens permitidas, separadas por vírgula |
+| `CORS_ORIGINS` | vazio | Origens permitidas, separadas por vírgula; defina no `.env` para liberar o frontend |
 
 O arquivo `.env` não é versionado. O `.env.example` contém apenas valores
 demonstrativos.
