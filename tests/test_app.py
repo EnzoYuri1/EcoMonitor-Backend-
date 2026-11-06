@@ -93,6 +93,7 @@ def test_openapi_tem_operation_ids_estaveis(client):
         "ocorrencias_atualizar",
         "ocorrencias_excluir",
         "estatisticas_obter",
+        "assistente_perguntar",
     }
 
 
