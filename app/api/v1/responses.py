@@ -43,3 +43,25 @@ VALIDATION_ERROR_RESPONSE: dict[str, Any] = {
         }
     },
 }
+
+RATE_LIMIT_RESPONSE: dict[str, Any] = {
+    "description": (
+        "Limite de uso do assistente atingido: intervalo mínimo entre "
+        "perguntas, cota diária por usuário ou cota gratuita do OpenRouter."
+    )
+}
+
+UPSTREAM_ERROR_RESPONSE: dict[str, Any] = {
+    "description": (
+        "O provedor de IA retornou um erro inesperado, resposta vazia ou "
+        "formato inválido."
+    )
+}
+
+UNAVAILABLE_RESPONSE: dict[str, Any] = {
+    "description": (
+        "Assistente indisponível: desativado neste ambiente, sem "
+        "OPENROUTER_API_KEY configurada, chave inválida, tempo de espera "
+        "excedido ou falha de conexão com o OpenRouter."
+    )
+}
