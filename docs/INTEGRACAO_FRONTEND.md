@@ -79,7 +79,7 @@ retornam `401` com a mesma mensagem para email inexistente ou senha incorreta.
 
 ### 2.3 Envio do token
 
-Todas as rotas de ocorrências e estatísticas exigem o cabeçalho:
+Todas as rotas de ocorrências, estatísticas e o assistente exigem o cabeçalho:
 
 ```http
 Authorization: Bearer <access_token>
@@ -111,6 +111,7 @@ Resposta `200 OK`: mesmo formato do cadastro, sem senha ou hash.
 | PATCH | `/ocorrencias/{id}` | Bearer | Atualizar parcialmente (responsável) |
 | DELETE | `/ocorrencias/{id}` | Bearer | Excluir (responsável) |
 | GET | `/stats` | Bearer | Indicadores do dashboard |
+| POST | `/assistente` | Bearer | Perguntar ao assistente de IA (OpenRouter) |
 
 ## 4. Ocorrências
 
@@ -468,3 +469,46 @@ Observações:
   CORS.
 - Para URL fixa, configure um túnel nomeado no painel da Cloudflare com um
   domínio próprio.
+
+## 9. Assistente de IA (OpenRouter)
+
+O assistente orienta analistas ambientais sobre o sistema. É somente leitura:
+não cria, edita nem exclui dados.
+
+`POST /assistente`
+
+```json
+{
+  "mensagem": "Como cadastro uma queimada?",
+  "historico": [
+    { "role": "user", "content": "O que é o EcoMonitor?" }
+  ]
+}
+```
+
+Resposta `200 OK`:
+
+```json
+{
+  "resposta": "Para cadastrar uma queimada, vá ao menu \"Nova ocorrência\"...",
+  "modelo": "openrouter/free"
+}
+```
+
+Regras:
+
+- `mensagem`: texto até 1.000 caracteres; `historico`: no máximo 6 mensagens
+  anteriores, com `role` `user` ou `assistant` (podem ser omitidas).
+- O histórico é opcional; envie as mensagens mais recentes primeiro em ordem
+  cronológica para manter o contexto da conversa.
+- Erros amigáveis: `422` mensagem/histórico inválidos, `429` limite atingido
+  (por usuário ou da cota gratuita do OpenRouter), `502` provedor falhou e
+  `503` assistente desativado, sem chave ou indisponível.
+- A cota gratuita é 20 requisições/minuto e 50 por dia (sem créditos
+  comprados). O backend limita por usuário a 40 perguntas/dia e 1 a cada
+  3 segundos.
+- Configure no `.env` do backend: `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` e,
+  opcionalmente, `OPENROUTER_TIMEOUT`, `OPENROUTER_SITE_URL` e
+  `OPENROUTER_SITE_NAME`.
+- O conhecimento do assistente fica em `docs/GUIA_ANALISTA.md`; edite esse
+  arquivo sempre que as telas ou regras mudarem.
