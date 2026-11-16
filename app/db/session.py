@@ -2,6 +2,7 @@ from collections.abc import Generator
 from pathlib import Path
 
 from sqlalchemy import event
+from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.config import BASE_DIR, settings
@@ -23,23 +24,31 @@ def _resolve_database_url(url: str) -> str:
 DATABASE_URL = _resolve_database_url(settings.DATABASE_URL)
 
 connect_args = (
-    {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+    {"check_same_thread": False, "timeout": 15}
+    if DATABASE_URL.startswith("sqlite")
+    else {}
 )
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
+pool_kwargs = (
+    {"poolclass": NullPool} if DATABASE_URL.startswith("sqlite") else {}
+)
+engine = create_engine(DATABASE_URL, connect_args=connect_args, **pool_kwargs)
 
 
 @event.listens_for(engine, "connect")
 def _enable_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:
-    """Garante a integridade referencial no SQLite."""
+    """Garante a integridade referencial e concorrência (WAL) no SQLite."""
     if DATABASE_URL.startswith("sqlite"):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
         cursor.close()
 
 
 def create_db_and_tables() -> None:
     """Cria o arquivo do banco e as tabelas registradas no SQLModel."""
-    from app import models  # noqa: F401  # registra os modelos
+    from app import models  # noqa: F401  # registra os modelos principais
+    from app.models import central as _central  # noqa: F401  # modelos da central
 
     SQLModel.metadata.create_all(engine)
 
