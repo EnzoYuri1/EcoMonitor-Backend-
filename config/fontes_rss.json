@@ -1,0 +1,75 @@
+[
+  {
+    "id": "mongabay_brasil",
+    "nome": "Mongabay Brasil",
+    "url": "https://brasil.mongabay.com/feed/",
+    "idioma": "pt",
+    "categoria_padrao": "amazonia",
+    "ativo": true
+  },
+  {
+    "id": "amazonia_real",
+    "nome": "Amazônia Real",
+    "url": "https://amazoniareal.com.br/feed/",
+    "idioma": "pt",
+    "categoria_padrao": "amazonia",
+    "ativo": true
+  },
+  {
+    "id": "oeco",
+    "nome": "((o))eco",
+    "url": "https://oeco.org.br/feed/",
+    "idioma": "pt",
+    "categoria_padrao": "preservacao",
+    "ativo": true
+  },
+  {
+    "id": "climainfo",
+    "nome": "ClimaInfo",
+    "url": "https://climainfo.org.br/feed/",
+    "idioma": "pt",
+    "categoria_padrao": "clima",
+    "ativo": true
+  },
+  {
+    "id": "g1_natureza",
+    "nome": "G1 Natureza",
+    "url": "https://g1.globo.com/rss/g1/natureza/",
+    "idioma": "pt",
+    "categoria_padrao": "preservacao",
+    "ativo": true
+  },
+  {
+    "id": "folha_ambiente",
+    "nome": "Folha Ambiente",
+    "url": "https://feeds.folha.uol.com.br/ambiente/rss091.xml",
+    "idioma": "pt",
+    "categoria_padrao": "clima",
+    "ativo": true
+  },
+  {
+    "id": "agencia_brasil",
+    "nome": "Agência Brasil",
+    "url": "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml",
+    "idioma": "pt",
+    "categoria_padrao": "fiscalizacao",
+    "filtrar_ambiental": true,
+    "ativo": true
+  },
+  {
+    "id": "mongabay_global",
+    "nome": "Mongabay (Internacional)",
+    "url": "https://news.mongabay.com/feed/",
+    "idioma": "en",
+    "categoria_padrao": "preservacao",
+    "ativo": true
+  },
+  {
+    "id": "nasa_earth_observatory",
+    "nome": "NASA Earth Observatory",
+    "url": "https://earthobservatory.nasa.gov/feeds/earth-observatory.rss",
+    "idioma": "en",
+    "categoria_padrao": "clima",
+    "ativo": true
+  }
+]
