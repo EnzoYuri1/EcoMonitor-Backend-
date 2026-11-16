@@ -4,8 +4,16 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from app import models  # noqa: F401  # registra os modelos no metadata
+from app.core.config import settings
+from app.models import central as _central  # noqa: F401
 from app.db.session import get_session
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def _default_openrouter_test_key(monkeypatch):
+    if not settings.OPENROUTER_API_KEY:
+        monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "sk-or-test-key")
 
 
 @pytest.fixture
