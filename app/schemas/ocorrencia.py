@@ -154,6 +154,17 @@ class OcorrenciaRead(BaseModel):
     longitude: float | None
     data_ocorrencia: date
     created_by: int
+    status: Literal[
+        "registrada",
+        "em_execucao",
+        "em_validacao",
+        "concluida",
+    ]
+    prioridade: Literal["baixa", "media", "alta", "critica"]
+    prazo: date | None
+    responsavel_id: int | None
+    resolucao: str | None
+    observacao_validacao: str | None
     created_at: datetime
 
     model_config = ConfigDict(
@@ -169,7 +180,83 @@ class OcorrenciaRead(BaseModel):
                 "longitude": -55.5025,
                 "data_ocorrencia": "2026-10-01",
                 "created_by": 1,
+                "status": "registrada",
+                "prioridade": "media",
+                "prazo": None,
+                "responsavel_id": None,
+                "resolucao": None,
+                "observacao_validacao": None,
                 "created_at": "2026-10-30T14:00:00Z",
             }
         },
     )
+
+
+class AtividadeRead(BaseModel):
+    id: int
+    titulo: str
+    descricao: str | None
+    concluida: bool
+    created_by: int
+    created_at: datetime
+    concluida_em: datetime | None
+
+
+class EvidenciaRead(BaseModel):
+    id: int
+    categoria: Literal["inicial", "execucao", "conclusao"]
+    nome_arquivo: str
+    tipo_mime: str
+    tamanho: int
+    enviado_por: int
+    created_at: datetime
+
+
+class HistoricoRead(BaseModel):
+    id: int
+    ator_id: int | None
+    acao: str
+    descricao: str
+    created_at: datetime
+
+
+class OcorrenciaDetalhe(OcorrenciaRead):
+    atividades: list[AtividadeRead]
+    evidencias: list[EvidenciaRead]
+    historico: list[HistoricoRead]
+
+
+class TriagemInput(BaseModel):
+    prioridade: Literal["baixa", "media", "alta", "critica"]
+    prazo: date
+    responsavel_id: int
+
+
+class AtividadeCreate(BaseModel):
+    titulo: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=3, max_length=160),
+    ]
+    descricao: Annotated[
+        str | None,
+        StringConstraints(strip_whitespace=True, max_length=1000),
+    ] = None
+
+
+class AtividadeUpdate(BaseModel):
+    concluida: bool
+
+
+class SolicitacaoConclusao(BaseModel):
+    resolucao: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=10, max_length=4000),
+    ]
+
+
+class ValidacaoConclusao(BaseModel):
+    aprovado: bool
+    comentario: Annotated[
+        str | None,
+        StringConstraints(strip_whitespace=True, max_length=2000),
+    ] = None

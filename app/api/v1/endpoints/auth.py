@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.api.v1.responses import (
     CONFLICT_RESPONSE,
@@ -8,7 +8,11 @@ from app.api.v1.responses import (
     VALIDATION_ERROR_RESPONSE,
 )
 from app.core.config import settings
-from app.core.security import create_access_token, get_current_user
+from app.core.security import (
+    create_access_token,
+    get_admin_user,
+    get_current_user,
+)
 from app.db.session import get_session
 from app.models import User
 from app.schemas.user import Token, UserCreate, UserLogin, UserRead
@@ -110,3 +114,19 @@ def read_current_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
     return current_user
+
+
+@router.get(
+    "/users",
+    response_model=list[UserRead],
+    operation_id="auth_listar_usuarios",
+    summary="Listar usuários para atribuição",
+    responses={401: UNAUTHORIZED_RESPONSE, 403: {"description": "Acesso negado."}},
+)
+def list_users(
+    session: Session = Depends(get_session),
+    _: User = Depends(get_admin_user),
+) -> list[User]:
+    return list(
+        session.exec(select(User).order_by(User.nome, User.id)).all()
+    )

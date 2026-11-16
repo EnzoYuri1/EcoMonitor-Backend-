@@ -17,6 +17,7 @@ def create_user(session: Session, user_in: UserCreate) -> User:
         nome=user_in.nome,
         email=user_in.email,
         senha_hash=get_password_hash(user_in.senha),
+        perfil="funcionario",
     )
     session.add(user)
     session.commit()

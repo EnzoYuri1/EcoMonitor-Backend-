@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 class User(SQLModel, table=True):
-    """Usuário responsável por registrar ocorrências ambientais."""
+    """Usuário responsável por registrar e acompanhar ocorrências."""
 
     __tablename__ = "users"
 
@@ -16,8 +16,14 @@ class User(SQLModel, table=True):
     nome: str = Field(max_length=120)
     email: str = Field(max_length=255, unique=True, index=True)
     senha_hash: str = Field(max_length=255)
+    perfil: str = Field(default="funcionario", max_length=20)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
 
-    ocorrencias: list["Ocorrencia"] = Relationship(back_populates="owner")
+    ocorrencias: list["Ocorrencia"] = Relationship(
+        back_populates="owner",
+        sa_relationship_kwargs={
+            "foreign_keys": "Ocorrencia.created_by",
+        },
+    )

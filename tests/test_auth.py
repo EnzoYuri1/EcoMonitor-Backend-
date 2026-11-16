@@ -34,6 +34,7 @@ def test_registro_de_usuario(client, session):
     data = response.json()
     assert data["nome"] == "Maria Silva"
     assert data["email"] == EMAIL
+    assert data["perfil"] == "funcionario"
     assert data["id"] > 0
     assert "senha" not in data
     assert "senha_hash" not in data
@@ -122,6 +123,24 @@ def test_me_com_usuario_inexistente(client):
     response = client.get("/api/v1/auth/me", headers=_auth_header(token))
 
     assert response.status_code == 401
+
+
+def test_listagem_de_usuarios_exige_administrador(client, session):
+    _register(client)
+    token = _login(client).json()["access_token"]
+    headers = _auth_header(token)
+
+    proibido = client.get("/api/v1/auth/users", headers=headers)
+    assert proibido.status_code == 403
+
+    user = session.exec(select(User).where(User.email == EMAIL)).first()
+    user.perfil = "administrador"
+    session.add(user)
+    session.commit()
+
+    permitido = client.get("/api/v1/auth/users", headers=headers)
+    assert permitido.status_code == 200
+    assert permitido.json()[0]["perfil"] == "administrador"
 
 
 def test_validacao_dos_campos_de_registro(client):

@@ -1,5 +1,9 @@
 from datetime import date, timedelta
 
+from sqlmodel import select
+
+from app.models import User
+
 BASE = "/api/v1/ocorrencias"
 SENHA = "senhaSegura123"
 
@@ -80,7 +84,7 @@ def test_rotas_de_ocorrencias_exigem_autenticacao(client):
     assert client.delete(f"{BASE}/1").status_code == 401
 
 
-def test_listagem_visivel_para_todos_autenticados(client):
+def test_funcionario_lista_apenas_registros_proprios(client):
     headers_a, _ = _autenticar(client, "autor@example.com")
     headers_b, _ = _autenticar(client, "leitor@example.com")
     _criar(client, headers_a, tipo="queimada", municipio="Sinop")
@@ -90,8 +94,26 @@ def test_listagem_visivel_para_todos_autenticados(client):
 
     assert response.status_code == 200
     dados = response.json()
-    assert dados["total"] == 2
-    assert len(dados["items"]) == 2
+    assert dados["total"] == 0
+    assert dados["items"] == []
+
+
+def test_administrador_lista_todas_as_ocorrencias(client, session):
+    headers_a, _ = _autenticar(client, "autor@example.com")
+    headers_admin, _ = _autenticar(client, "admin@example.com")
+    admin = session.exec(
+        select(User).where(User.email == "admin@example.com")
+    ).first()
+    admin.perfil = "administrador"
+    session.add(admin)
+    session.commit()
+    _criar(client, headers_a, tipo="queimada", municipio="Sinop")
+    _criar(client, headers_a, tipo="desmatamento", municipio="Sorriso")
+
+    response = client.get(BASE, headers=headers_admin)
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 2
 
 
 def test_listagem_paginada(client):
@@ -230,6 +252,16 @@ def test_consulta_por_id_e_nao_encontrado(client):
 
     ausente = client.get(f"{BASE}/999999", headers=headers)
     assert ausente.status_code == 404
+
+
+def test_funcionario_nao_consulta_ocorrencia_de_terceiro(client):
+    headers_a, _ = _autenticar(client, "autor@example.com")
+    headers_b, _ = _autenticar(client, "leitor@example.com")
+    ocorrencia = _criar(client, headers_a)
+
+    response = client.get(f"{BASE}/{ocorrencia['id']}", headers=headers_b)
+
+    assert response.status_code == 403
 
 
 def test_atualizacao_pelo_responsavel(client):

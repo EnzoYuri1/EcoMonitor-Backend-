@@ -30,4 +30,4 @@ def get_stats(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> StatsRead:
-    return stats_service.get_stats(session)
+    return stats_service.get_stats(session, current_user)

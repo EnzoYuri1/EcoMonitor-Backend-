@@ -25,7 +25,13 @@ def _make_ocorrencia(created_by: int) -> Ocorrencia:
 
 
 def test_tabelas_registradas():
-    assert set(SQLModel.metadata.tables) == {"users", "ocorrencias"}
+    assert set(SQLModel.metadata.tables) == {
+        "users",
+        "ocorrencias",
+        "ocorrencia_atividades",
+        "ocorrencia_evidencias",
+        "ocorrencia_historico",
+    }
 
 
 def test_cria_usuario_e_ocorrencia_com_relacionamento(session):

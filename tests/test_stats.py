@@ -1,3 +1,7 @@
+from sqlmodel import select
+
+from app.models import User
+
 STATS_URL = "/api/v1/stats"
 OCORRENCIAS_URL = "/api/v1/ocorrencias"
 SENHA = "senhaSegura123"
@@ -49,7 +53,7 @@ def test_stats_sem_ocorrencias(client):
     }
 
 
-def test_stats_globais_por_tipo_e_municipio(client):
+def test_stats_globais_por_tipo_e_municipio(client, session):
     headers_a = _autenticar(client, "autor@example.com")
     headers_b = _autenticar(client, "leitor@example.com")
 
@@ -75,6 +79,12 @@ def test_stats_globais_por_tipo_e_municipio(client):
         municipio="Cuiabá",
         data_ocorrencia="2026-10-05",
     )
+    admin = session.exec(
+        select(User).where(User.email == "leitor@example.com")
+    ).first()
+    admin.perfil = "administrador"
+    session.add(admin)
+    session.commit()
 
     response = client.get(STATS_URL, headers=headers_b)
 

@@ -1,5 +1,6 @@
 from datetime import date, datetime, timezone
 from enum import Enum
+
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Column, Enum as SAEnum
@@ -44,8 +45,23 @@ class Ocorrencia(SQLModel, table=True):
     longitude: float | None = Field(default=None, ge=-180, le=180)
     data_ocorrencia: date = Field(index=True)
     created_by: int = Field(foreign_key="users.id", index=True)
+    status: str = Field(default="registrada", max_length=24, index=True)
+    prioridade: str = Field(default="media", max_length=12)
+    prazo: date | None = Field(default=None)
+    responsavel_id: int | None = Field(
+        default=None,
+        foreign_key="users.id",
+        index=True,
+    )
+    resolucao: str | None = Field(default=None, max_length=4000)
+    observacao_validacao: str | None = Field(default=None, max_length=2000)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
 
-    owner: Optional["User"] = Relationship(back_populates="ocorrencias")
+    owner: Optional["User"] = Relationship(
+        back_populates="ocorrencias",
+        sa_relationship_kwargs={
+            "foreign_keys": "Ocorrencia.created_by",
+        },
+    )

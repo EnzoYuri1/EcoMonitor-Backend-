@@ -1,25 +1,39 @@
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from app.models import Ocorrencia, TipoOcorrencia
+from app.models import Ocorrencia, TipoOcorrencia, User
 from app.schemas.stats import MunicipioStats, StatsRead, TipoStats
 
 
-def get_stats(session: Session) -> StatsRead:
-    """Calcula os indicadores ambientais a partir do banco."""
-    total = session.exec(
-        select(func.count()).select_from(Ocorrencia)
-    ).one()
-
-    tipos_rows = session.execute(
-        select(Ocorrencia.tipo, func.count(Ocorrencia.id)).group_by(
-            Ocorrencia.tipo
+def get_stats(session: Session, current_user: User) -> StatsRead:
+    """Calcula indicadores somente dos registros visíveis ao usuário."""
+    filtros = []
+    if current_user.perfil != "administrador":
+        filtros.append(
+            (Ocorrencia.created_by == current_user.id)
+            | (Ocorrencia.responsavel_id == current_user.id)
         )
+
+    total_query = select(func.count()).select_from(Ocorrencia)
+    if filtros:
+        total_query = total_query.where(*filtros)
+    total = session.exec(total_query).one()
+
+    tipos_query = select(Ocorrencia.tipo, func.count(Ocorrencia.id))
+    municipios_query = select(
+        Ocorrencia.municipio,
+        func.count(Ocorrencia.id),
+    )
+    if filtros:
+        tipos_query = tipos_query.where(*filtros)
+        municipios_query = municipios_query.where(*filtros)
+    tipos_rows = session.execute(
+        tipos_query.group_by(Ocorrencia.tipo)
     ).all()
     totais_por_tipo = {tipo: quantidade for tipo, quantidade in tipos_rows}
 
     municipios_rows = session.execute(
-        select(Ocorrencia.municipio, func.count(Ocorrencia.id))
+        municipios_query
         .group_by(Ocorrencia.municipio)
         .order_by(
             func.count(Ocorrencia.id).desc(),

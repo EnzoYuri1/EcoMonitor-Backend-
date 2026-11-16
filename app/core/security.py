@@ -75,3 +75,15 @@ def get_current_user(
         raise _credentials_exception()
 
     return user
+
+
+def get_admin_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Exige o perfil administrador para operações de gestão."""
+    if current_user.perfil != "administrador":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem realizar esta ação.",
+        )
+    return current_user

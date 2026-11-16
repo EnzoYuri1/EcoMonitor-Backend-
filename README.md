@@ -2,8 +2,8 @@
 
 API REST para monitoramento ambiental de queimadas e desmatamento. O backend
 oferece autenticação JWT, cadastro e gerenciamento de ocorrências, filtros,
-estatísticas para dashboard e documentação OpenAPI, servindo o frontend
-Streamlit do EcoMonitor.
+estatísticas para dashboard, fluxo de trabalho por ocorrência, controle de
+acesso por perfil e documentação OpenAPI.
 
 ## Stack
 
@@ -87,6 +87,35 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 O arquivo `.env` não é versionado. O `.env.example` contém apenas valores
 demonstrativos.
+
+### Perfis de acesso
+
+Novos cadastros recebem automaticamente o perfil `funcionario`. Por segurança,
+nenhum campo público do cadastro permite solicitar perfil administrador.
+Depois de configurar o banco e o `.env`, crie o primeiro administrador
+interativamente:
+
+```powershell
+python -m app.cli create-admin
+```
+
+O comando cria uma conta administrativa ou promove uma conta existente sem
+exibir ou registrar a senha no terminal. Mantenha pelo menos um administrador
+ativo; funcionários só consultam registros próprios ou atribuídos a eles.
+
+### Fluxo de ocorrências
+
+1. Funcionário cadastra as informações e ao menos uma evidência inicial.
+2. Administrador define prioridade, prazo e funcionário responsável.
+3. Responsável registra atividades, conclui tarefas e anexa evidências.
+4. Responsável envia a resolução e documentos comprobatórios.
+5. Administrador aprova a documentação ou devolve o caso com um motivo.
+6. Documentação aprovada encerra oficialmente a ocorrência.
+
+Documentos aceitos: PDF, JPG e PNG, até 10 MB por arquivo. Os arquivos são
+armazenados em `data/evidencias/`, fora da árvore pública do frontend, e só
+podem ser baixados por um usuário autorizado para a ocorrência. A migração
+adiciona as novas colunas e tabelas ao banco SQLite existente ao iniciar a API.
 
 ## Executar a API
 
@@ -179,6 +208,11 @@ Qualquer usuário autenticado pode consultar os registros. Apenas o responsável
 (`created_by`) pode alterar ou excluir. O responsável é sempre definido pelo
 token, nunca pelo corpo da requisição. O `PATCH` atualiza apenas os campos
 enviados; `PUT` não é aceito.
+
+Funcionários só listam e consultam ocorrências próprias ou atribuídas a eles.
+Administradores têm acesso total. Atribuição, documentos, atividades,
+solicitação de conclusão e validação seguem o perfil e o estágio atual da
+ocorrência; alterações de status não são aceitas como edição genérica.
 
 ### Estatísticas
 

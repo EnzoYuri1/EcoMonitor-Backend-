@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import (
     AfterValidator,
@@ -93,6 +93,7 @@ class UserRead(BaseModel):
     id: int
     nome: str
     email: EmailStr
+    perfil: Literal["administrador", "funcionario"]
     created_at: datetime
 
     model_config = ConfigDict(
@@ -102,6 +103,7 @@ class UserRead(BaseModel):
                 "id": 1,
                 "nome": "Maria Silva",
                 "email": "maria@example.com",
+                "perfil": "funcionario",
                 "created_at": "2026-10-30T14:00:00Z",
             }
         },

@@ -3,8 +3,16 @@ from datetime import date
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from app.models import Ocorrencia, TipoOcorrencia
+from app.models import (
+    Ocorrencia,
+    OcorrenciaAtividade,
+    OcorrenciaEvidencia,
+    OcorrenciaHistorico,
+    TipoOcorrencia,
+    User,
+)
 from app.schemas.ocorrencia import OcorrenciaCreate, OcorrenciaUpdate
+from app.services.workflow_service import EVIDENCIAS_DIR
 
 
 def create_ocorrencia(
@@ -20,6 +28,15 @@ def create_ocorrencia(
     session.add(ocorrencia)
     session.commit()
     session.refresh(ocorrencia)
+    session.add(
+        OcorrenciaHistorico(
+            ocorrencia_id=ocorrencia.id,
+            ator_id=user_id,
+            acao="registrada",
+            descricao="Ocorrência registrada.",
+        )
+    )
+    session.commit()
     return ocorrencia
 
 
@@ -31,6 +48,7 @@ def list_ocorrencias(
     data_fim: date | None = None,
     page: int = 1,
     page_size: int = 20,
+    current_user: User | None = None,
 ) -> tuple[list[Ocorrencia], int]:
     """Lista ocorrências paginadas com filtros opcionais."""
     filtros = []
@@ -46,6 +64,11 @@ def list_ocorrencias(
         filtros.append(Ocorrencia.data_ocorrencia >= data_inicio)
     if data_fim is not None:
         filtros.append(Ocorrencia.data_ocorrencia <= data_fim)
+    if current_user is not None and current_user.perfil != "administrador":
+        filtros.append(
+            (Ocorrencia.created_by == current_user.id)
+            | (Ocorrencia.responsavel_id == current_user.id)
+        )
 
     total_statement = select(func.count()).select_from(Ocorrencia)
     data_statement = select(Ocorrencia)
@@ -91,10 +114,26 @@ def update_ocorrencia(
 
 def delete_ocorrencia(session: Session, ocorrencia: Ocorrencia) -> None:
     """Remove uma ocorrência do banco."""
+    evidencias = session.exec(
+        select(OcorrenciaEvidencia).where(
+            OcorrenciaEvidencia.ocorrencia_id == ocorrencia.id
+        )
+    ).all()
+    atividades = session.exec(
+        select(OcorrenciaAtividade).where(
+            OcorrenciaAtividade.ocorrencia_id == ocorrencia.id
+        )
+    ).all()
+    historico = session.exec(
+        select(OcorrenciaHistorico).where(
+            OcorrenciaHistorico.ocorrencia_id == ocorrencia.id
+        )
+    ).all()
+    arquivos = [EVIDENCIAS_DIR / item.arquivo_salvo for item in evidencias]
+    for item in evidencias + atividades + historico:
+        session.delete(item)
     session.delete(ocorrencia)
     session.commit()
+    for arquivo in arquivos:
+        arquivo.unlink(missing_ok=True)
 
-
-def usuario_e_responsavel(ocorrencia: Ocorrencia, user_id: int) -> bool:
-    """Verifica se o usuário é o responsável pela ocorrência."""
-    return ocorrencia.created_by == user_id

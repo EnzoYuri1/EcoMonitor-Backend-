@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from pathlib import Path
 
-from sqlalchemy import event
+from sqlalchemy import event, inspect, text
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.config import BASE_DIR, settings
@@ -38,10 +38,55 @@ def _enable_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:
 
 
 def create_db_and_tables() -> None:
-    """Cria o arquivo do banco e as tabelas registradas no SQLModel."""
+    """Cria as tabelas e adiciona campos de workflow a bancos existentes."""
     from app import models  # noqa: F401  # registra os modelos
 
     SQLModel.metadata.create_all(engine)
+
+    colunas_adicionais = {
+        "users": {
+            "perfil": "VARCHAR(20) NOT NULL DEFAULT 'funcionario'",
+        },
+        "ocorrencias": {
+            "status": "VARCHAR(24) NOT NULL DEFAULT 'registrada'",
+            "prioridade": "VARCHAR(12) NOT NULL DEFAULT 'media'",
+            "prazo": "DATE",
+            "responsavel_id": "INTEGER REFERENCES users(id)",
+            "resolucao": "VARCHAR(4000)",
+            "observacao_validacao": "VARCHAR(2000)",
+        },
+    }
+
+    with engine.begin() as connection:
+        tabelas = set(inspect(connection).get_table_names())
+        for tabela, colunas in colunas_adicionais.items():
+            if tabela not in tabelas:
+                continue
+            existentes = {
+                coluna["name"]
+                for coluna in inspect(connection).get_columns(tabela)
+            }
+            for nome, definicao in colunas.items():
+                if nome not in existentes:
+                    connection.execute(
+                        text(
+                            f"ALTER TABLE {tabela} ADD COLUMN "
+                            f"{nome} {definicao}"
+                        )
+                    )
+
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_ocorrencias_status "
+                "ON ocorrencias (status)"
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_ocorrencias_responsavel_id "
+                "ON ocorrencias (responsavel_id)"
+            )
+        )
 
 
 def get_session() -> Generator[Session, None, None]:
