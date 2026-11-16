@@ -109,6 +109,20 @@ TAGS_METADATA = [
         ),
     },
     {
+        "name": "Assistente",
+        "description": (
+            "Assistente de dúvidas sobre o EcoMonitor integrado ao OpenRouter."
+        ),
+    },
+    {
+        "name": "Central Ambiental",
+        "description": (
+            "Central de Informações Ambientais: notícias jornalísticas, "
+            "artigos científicos, monitoramento oficial (INPE/NASA FIRMS), "
+            "busca inteligente e painel de saúde das integrações."
+        ),
+    },
+    {
         "name": "Saúde",
         "description": "Verificação de disponibilidade da API.",
     },

@@ -39,6 +39,30 @@ class Settings:
     OPENROUTER_SITE_URL: str = os.getenv("OPENROUTER_SITE_URL", "")
     OPENROUTER_SITE_NAME: str = os.getenv("OPENROUTER_SITE_NAME", "")
 
+    # Configurações da Central de Informações Ambientais
+    CENTRAL_CONTACT_EMAIL: str = os.getenv(
+        "CENTRAL_CONTACT_EMAIL", "contato@ecomonitor.local"
+    )
+    OPENALEX_API_KEY: str = os.getenv("OPENALEX_API_KEY", "")
+    GNEWS_API_KEY: str = os.getenv("GNEWS_API_KEY", "")
+    FIRMS_MAP_KEY: str = os.getenv("FIRMS_MAP_KEY", "")
+    CENTRAL_HTTP_TIMEOUT: int = int(os.getenv("CENTRAL_HTTP_TIMEOUT", "15"))
+    CENTRAL_RATE_LIMIT_PER_MIN: int = int(
+        os.getenv("CENTRAL_RATE_LIMIT_PER_MIN", "60")
+    )
+    CENTRAL_NEWS_REFRESH_HOURS: int = int(
+        os.getenv("CENTRAL_NEWS_REFRESH_HOURS", "3")
+    )
+    CENTRAL_ARTICLES_REFRESH_HOURS: int = int(
+        os.getenv("CENTRAL_ARTICLES_REFRESH_HOURS", "24")
+    )
+    CENTRAL_MONITORING_REFRESH_HOURS: int = int(
+        os.getenv("CENTRAL_MONITORING_REFRESH_HOURS", "24")
+    )
+    CENTRAL_SCHEDULER_ENABLED: bool = (
+        os.getenv("CENTRAL_SCHEDULER_ENABLED", "false").lower() == "true"
+    )
+
 
 settings = Settings()
 
